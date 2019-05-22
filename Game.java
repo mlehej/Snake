@@ -1,10 +1,10 @@
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Shape;
-import java.awt.Stroke;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -27,6 +27,8 @@ public class Game extends TimerTask{
 	
 	public static GUI GUI;
 	
+	private static boolean over = false;
+	
 	public Game() {
 		super();
 		GUI = new GUI();
@@ -36,10 +38,23 @@ public class Game extends TimerTask{
 	}
 	
 	public static void reset() {
-		GUI = new GUI();
-		GUI.setVisible(true);
+		GUI.panel.tom.reset();
 
 	}
+	
+	public static void start() {
+		reset();
+	}
+	
+	public static void end() {
+		if (over) {
+			reset();
+			over = false;
+		}
+		GUI.panel.changeGame();
+	}
+	
+	
 	
 	@Override
     public void run(){
@@ -47,9 +62,15 @@ public class Game extends TimerTask{
 
 	}
 	public static void main(String[] args) {
+		
 		TimerTask timerTask = new Game();
 		Timer timer = new Timer(true);
 		timer.scheduleAtFixedRate(timerTask, 0, 10*10);		
+	}
+
+	public static void over() {
+		GUI.panel.changeGame();
+		over = true;
 	}
 
 }
@@ -82,16 +103,41 @@ class Snake {
 	
 	public Snake() {
 		
-		dir = 0;
+		dir = 1;
 		hungry = true;
 		this.snake = new ArrayList<Dimension>();
-		this.snake.add(new Dimension(2,7));
-		this.snake.add(new Dimension(2,6));
 		this.snake.add(new Dimension(2,5));
+		this.snake.add(new Dimension(2,6));
+		this.snake.add(new Dimension(2,7));
 	}
 	
 	public void changeDir(int x) {
-		dir = x;
+		switch (x) {
+		case 0:
+			if (!(dir == 1)) {
+				dir = 0;
+			} break;
+		case 1:
+			if (!(dir == 0)) {
+				dir = 1;
+			} break;
+		case 2:
+			if (!(dir == 3)) {
+				dir = 2;
+			} break;
+		case 3:
+			if (!(dir == 2)) {
+				dir = 3;
+			} break;
+		}
+	}
+	
+	public void reset()	{
+		this.snake.clear();
+		dir = 1;
+		this.snake.add(new Dimension(2,5));
+		this.snake.add(new Dimension(2,6));
+		this.snake.add(new Dimension(2,7));
 	}
 	
 	public int getDir() {
@@ -113,7 +159,10 @@ class Snake {
 	
 	public void move() {
 
-		if(canMove()) {
+		if(!canMove()) {
+			Game.over();
+		}
+		else {		
 			if (hungry){
 				this.snake.remove(0);
 				
@@ -174,27 +223,32 @@ class GUI extends JFrame {
 	    JMenuBar bar = new JMenuBar();
 	    setJMenuBar(bar);
 	    
-	    JMenu menu = new JMenu("File");
+	    JMenu menu = new JMenu("Game");
 	      bar.add(menu);
-	    
-	      JMenuItem item = new JMenuItem("Reset");
-	      item.setAccelerator(KeyStroke.getKeyStroke('R', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+	      
+	      JMenuItem item = new JMenuItem("New");
+	      item.setAccelerator(KeyStroke.getKeyStroke('N', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 	      item.setIcon(UIManager.getIcon("FileView.fileIcon"));
-	      item.setEnabled(true);
+	      menu.add(item);
 	      item.addActionListener(new ActionListener() {
 	          
 	          @Override
 	          public void actionPerformed(ActionEvent e) {
-	        	  Game.reset();
+	        	  Game.start();
 	          }
-	      });
+	      });   
+	      item = new JMenuItem("Pause");
+	      item.setAccelerator(KeyStroke.getKeyStroke('P', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+	      item.setIcon(UIManager.getIcon("FileView.fileIcon"));
 	      menu.add(item);
-	    
-	      item = new JMenuItem("Open...");
-	      item.setAccelerator(KeyStroke.getKeyStroke('O', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
-	      item.setIcon(UIManager.getIcon("Tree.openIcon"));
-	      item.setEnabled(false);
-	      menu.add(item);
+	      item.addActionListener(new ActionListener() {
+	          
+	          @Override
+	          public void actionPerformed(ActionEvent e) {
+	        	  Game.end();;
+	          }
+	      });   
+
 	}
 }
 
@@ -202,11 +256,13 @@ class Main extends JPanel {
 	
 	private static final long serialVersionUID = 1L;
 	
-	boolean game;
+	
+	private boolean game = false;
 	
 	final Color RED = new Color(255,0,0);
 	final Color BLACK = new Color(0,0,0);
 	final Color WHITE = new Color(255,255,255);
+	final Color DIMSCREEN = new Color(0,0,0,170);
 	
 	final int SNAKE_SIZE = 20;
 	
@@ -216,7 +272,7 @@ class Main extends JPanel {
 	public Main() {
 		super();
 
-		setBackground(WHITE);
+		setBackground(new Color(0,200,150,200));
 		this.setFocusable(true);
 		this.requestFocusInWindow();
 				
@@ -234,6 +290,7 @@ class Main extends JPanel {
 	      @Override
 	      public void keyReleased(KeyEvent e) {
 		      int keyCode = e.getKeyCode();
+		      if (game)
 		    	  switch( keyCode ) { 
 		        	case KeyEvent.VK_UP:
 		        		tom.changeDir(0);
@@ -253,18 +310,26 @@ class Main extends JPanel {
 	}
 	    
 	    public void update() {
-	    	tom.move();
-	    	tom.setHungry(true);
-	    	if (tom.checkHungry(apple.dim)) {
-	    		tom.setHungry(false);
-	    	}
-	    	if (!tom.hungry) {
-	    		apple.newFood();
+	    	if (game) {
+	    		
+	    		
+		    	tom.move();
+		    	tom.setHungry(true);
+		    	if (tom.checkHungry(apple.dim)) {
+		    		tom.setHungry(false);
+		    	}
+		    	if (!tom.hungry) {
+		    		apple.newFood();
+		    	}
 	    	}
 	    	repaint();
+	    	
 	    }
 	   
 	
+	    public void changeGame() {
+	    	game = !game;
+	    }
 
 	
 	@Override
@@ -273,28 +338,56 @@ class Main extends JPanel {
 	    
 	    Graphics2D graphics = (Graphics2D)g;
 	    
-	    Random rand = new Random();
 	    
-	    for (int i = 0; i <= 29;i++) {
-	    	for (int j = 0; j <= 27;j++) {
-	    		int r = rand.nextInt(5) + 200;
-	    		Color c = new Color(0,r,0);
-	    		graphics.setColor(c);
-	    		graphics.fillRect(i*SNAKE_SIZE, j*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE);
-	    	}
-	    }
-	   	
-	    for (Dimension xy : tom.snake) {
+	    for (int i = 0; i < tom.snake.size() -1; i++) {
+	    	Dimension xy = new Dimension(tom.snake.get(i));
 	    	graphics.setColor(BLACK);
-	    	graphics.fillOval(xy.width*SNAKE_SIZE, xy.height*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE);
-	    
-	    graphics.setColor(RED);
-	    graphics.drawLine(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+5, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+5, tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+15, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+15);
-	    graphics.drawLine(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+15, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+5, tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+5, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+15);
-	    
-	    graphics.setColor(RED);
-	    graphics.fillOval(apple.x*SNAKE_SIZE, apple.y*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE);
+	    	graphics.fillRect(xy.width*SNAKE_SIZE, xy.height*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE);
 	    	
+	     }
+	    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE);
+	    
+	    switch (tom.getDir()){
+		case 0: //up
+		    graphics.fillRect(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/2, SNAKE_SIZE, SNAKE_SIZE/2+2);
+		    graphics.setColor(WHITE);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/2, SNAKE_SIZE/3, SNAKE_SIZE/3);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3*2, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/2, SNAKE_SIZE/3, SNAKE_SIZE/3);break;
+		case 1: //down
+		    graphics.fillRect(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE/2);
+		    graphics.setColor(WHITE);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3*2, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);break;
+		case 2: //left
+		    graphics.fillRect(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/2, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE, SNAKE_SIZE/2, SNAKE_SIZE);
+		    graphics.setColor(WHITE);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3*2, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);break;
+		case 3: //right
+		    graphics.fillRect(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE, SNAKE_SIZE/2, SNAKE_SIZE);
+		    graphics.setColor(WHITE);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);
+		    graphics.fillOval(tom.snake.get(tom.snake.size()-1).width*SNAKE_SIZE+SNAKE_SIZE/3*2, tom.snake.get(tom.snake.size()-1).height*SNAKE_SIZE+SNAKE_SIZE/4, SNAKE_SIZE/3, SNAKE_SIZE/3);break;
+		    }
+	    
+	  
+	    
+	    
+	    
+	    graphics.setColor(RED);
+	    graphics.fillOval(apple.x*SNAKE_SIZE-1, apple.y*SNAKE_SIZE-1, SNAKE_SIZE+2, SNAKE_SIZE+2);
+	    graphics.setColor(BLACK);
+	    graphics.setStroke(new BasicStroke(2));
+	    graphics.drawLine(apple.x*SNAKE_SIZE+SNAKE_SIZE/2, apple.y*SNAKE_SIZE+SNAKE_SIZE/4, apple.x*SNAKE_SIZE+SNAKE_SIZE/3, apple.y*SNAKE_SIZE-3);
+	    
+	    if (!game) {
+
+	    	graphics.setColor(DIMSCREEN);
+	    	graphics.fillRect(0, 0, 607, 607);
+	    	graphics.setColor(RED);
+	    	graphics.setFont(new Font("TimesRoman", Font.BOLD, 50));
+	    	graphics.drawString("PAUSED", 200, 300);
 	    }	    
 	}	
 }
+
